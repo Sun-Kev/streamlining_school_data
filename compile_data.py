@@ -15,11 +15,9 @@ import pandas as pd
 from collections import defaultdict
 
 ########## IMPORTANT ############
-#								#
 # WHEN NEW FILES ARE DOWNLOADED #
 #      COPY AND PASTE THE       #
-#      NEW FILENAMES BELOW	    #
-#								#
+#      NEW FILENAMES BELOW.     #
 #################################
 
 # FILE UPLOAD DATE IS: FEBRUARY 16, 2018
@@ -37,14 +35,14 @@ end_date = "March 30, 2018"
 ###########################
 #    PLEASE DO NOT MAKE   #
 #   CHANGES TO THE CODE   #
-# 		   BELOW          #
+#          BELOW.         #
 ###########################
 
 ######### STEP 1 ##########
 #    IMPORT THE DATA      #
 # FILTER RELEVANT COLUMNS #
 #    THIS STEP HAS 5      #
-#   RELEVANT FUNCTIONS	  #
+#   RELEVANT FUNCTIONS.   #
 ###########################
 
 def import_gpa_data(filename):
@@ -231,8 +229,8 @@ def import_student_emails(filename):
 
 ######### STEP 2 ##########
 #   MERGE THE DATAFRAMES  #
-#	INTO A SINGLE DATA-   #
-#			FRAME         #
+#  INTO A SINGLE DATA-   #
+#           FRAME         #
 ###########################
 
 def master_dataframe(threshold):
