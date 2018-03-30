@@ -31,6 +31,9 @@ YTD_ATTN_DATA = "YTD Attn Details_20180216.csv"
 SWIPE_DATA = "-Verify.net-GEN_View_Student_Swipe_Print_Report_20180216.csv"
 ORANGE_DATA = "ORANGE List_Week of March 5th, 2018 - 9th Grade .csv"
 EMAIL_LIST =  "Email List - Username and Passwords_as of 9-7-2017.xls"
+SAT_9 = "scores-by-org 2018-03-27T12-48-59.xlsx"
+SAT_10 = "scores-by-org 2018-03-27T12-50-29.xlsx"
+SAT_11 = "scores-by-org 2018-03-08T09-08-59.xlsx"
 start_date = "March 26, 2018" 
 end_date = "March 30, 2018"
 
@@ -195,15 +198,14 @@ def str_list(d):
 
 def import_orange_list(filename):
 	"""
-	This functions takes csv file of ORANGE LIST students and
-	returns a cleaned pandas dataframe w/ columsn renamed.
+	This function takes csv file of ORANGE LIST students and
+	returns a cleaned pandas dataframe w/ columns renamed.
 
 	Input:
 		- filename: a string name of the csv file
 	Output:
 		- orange_df: a pandas dataframe of orange list students
 	"""
-	# not finished
 	orange_df = pd.read_csv(filename, usecols=['Student', 'Steps for Removal from Orange List'])
 	# rename columns
 	orange_df = orange_df.rename(index=int, columns={'Student':'ID', 
@@ -217,6 +219,39 @@ def import_orange_list(filename):
 
 
 	return orange_df
+
+def import_sat(filenames):
+	"""
+	This function takes an excel files of SAT_9, SAT_10, SAT_11 and 
+	returns a cleaned pandas dataframe w/ columns renamed.
+
+	Input:
+		- filename: a list of names of the excel file
+
+	Output:
+		- sat_df: a pandas dataframe of SAT score data
+	"""
+	# import SAT scores for each grade
+	l = []
+	for file in filenames:
+		df = pd.read_excel(file, skiprows=9, usecols=['Student ID', 'Total Score', 
+													'ERW', 'Math'])
+		# drop students withg missing IDs
+		df.dropna(inplace=True)
+		# make ID an integer and index
+		df['Student ID'] = df['Student ID'].apply(lambda x: int(x))
+		# rename columns 		
+		df = df.rename(index=int, columns={'Student ID':'ID', 'Total Score':'composite_sat', 
+						'Math':'math_sat', 'ERW':'erw_sat'})
+		# index by ID
+		df.set_index('ID')
+		l.append(df)
+
+	nine, ten, eleven = l
+	sat_df = nine.append([ten, eleven])
+	sat_df = sat_df.set_index('ID')
+
+	return sat_df
 
 
 def import_student_emails(filename):
@@ -266,8 +301,9 @@ def master_dataframe(threshold):
 	year = import_year_attn_data(YTD_ATTN_DATA)
 	swipe = import_swipe_data(SWIPE_DATA)
 	orange = import_orange_list(ORANGE_DATA)
+	sat = import_sat([SAT_9, SAT_10, SAT_11])
 	email = import_student_emails(EMAIL_LIST)
-	master_dataframe = pd.concat([gpa,rank,week,year,swipe,email,orange],axis=1)
+	master_dataframe = pd.concat([email,gpa,rank,sat,week,year,swipe,orange],axis=1)
 	
 	# drop rows missing excessive amounts of data
 	master_dataframe = master_dataframe.dropna(thresh=threshold)
@@ -275,7 +311,7 @@ def master_dataframe(threshold):
 	master_dataframe[['late_date', 'late_time', 'study_hall']] = master_dataframe[['late_date', 
 																'late_time', 'study_hall']].fillna(value="None")
 	master_dataframe[['orange_status']] = master_dataframe[['orange_status']].fillna(value="ARE NOT")
-	
+	master_dataframe[['composite_sat', 'erw_sat', 'math_sat']] = master_dataframe[['composite_sat', 'erw_sat', 'math_sat']].fillna(value="N/A")
 	# obtain separate dataframes for each grade level
 	nine, ten, eleven, twelve = groupby_grade(master_dataframe)
 
