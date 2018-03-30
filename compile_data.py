@@ -15,9 +15,11 @@ import pandas as pd
 from collections import defaultdict
 
 ########## IMPORTANT ############
+#								#
 # WHEN NEW FILES ARE DOWNLOADED #
 #      COPY AND PASTE THE       #
-#      NEW FILENAMES BELOW.     #
+#      NEW FILENAMES BELOW	    #
+#								#
 #################################
 
 # FILE UPLOAD DATE IS: FEBRUARY 16, 2018
@@ -35,14 +37,14 @@ end_date = "March 30, 2018"
 ###########################
 #    PLEASE DO NOT MAKE   #
 #   CHANGES TO THE CODE   #
-#          BELOW.         #
+# 		   BELOW          #
 ###########################
 
 ######### STEP 1 ##########
 #    IMPORT THE DATA      #
 # FILTER RELEVANT COLUMNS #
 #    THIS STEP HAS 5      #
-#   RELEVANT FUNCTIONS.   #
+#   RELEVANT FUNCTIONS	  #
 ###########################
 
 def import_gpa_data(filename):
@@ -174,8 +176,7 @@ def import_swipe_data(filename):
 	# rename columns
 	final_swipe_df = final_swipe_df.rename(index=int, 
 		columns={"0_x": "late_date", "0_y":"late_time"})
-	# fill in NaN values
-	final_swipe_df.fillna(value="None!", axis=1, inplace=True)
+
 
 	return final_swipe_df
 
@@ -203,10 +204,19 @@ def import_orange_list(filename):
 		- orange_df: a pandas dataframe of orange list students
 	"""
 	# not finished
-	orange_df = pd.read_csv(filename)
-	orange_df['Student'] = orange_df['Student'].apply(lambda x: int(x.split(" ")[1]))
-	orange_df = orange_df.rename(index=int, columns={"Student"
-		: "ID", "Steps for Removal from Orange List" : "study_hall"})	
+	orange_df = pd.read_csv(filename, usecols=['Student', 'Steps for Removal from Orange List'])
+	# rename columns
+	orange_df = orange_df.rename(index=int, columns={'Student':'ID', 
+		'Steps for Removal from Orange List':'study_hall'})
+	# extract Student ID numbers
+	orange_df['ID'] = orange_df['ID'].apply(lambda x: int(x.split(" ")[1]))
+	# add status column
+	orange_df['orange_status'] = "ARE"
+	# index by ID numbers
+	orange_df.set_index('ID', inplace=True)
+
+
+	return orange_df
 
 
 def import_student_emails(filename):
@@ -229,8 +239,8 @@ def import_student_emails(filename):
 
 ######### STEP 2 ##########
 #   MERGE THE DATAFRAMES  #
-#  INTO A SINGLE DATA-   #
-#           FRAME         #
+#	INTO A SINGLE DATA-   #
+#			FRAME         #
 ###########################
 
 def master_dataframe(threshold):
@@ -257,10 +267,15 @@ def master_dataframe(threshold):
 	swipe = import_swipe_data(SWIPE_DATA)
 	orange = import_orange_list(ORANGE_DATA)
 	email = import_student_emails(EMAIL_LIST)
-	master_dataframe = pd.concat([gpa,rank,week,year,swipe, email],axis=1)
-
+	master_dataframe = pd.concat([gpa,rank,week,year,swipe,email,orange],axis=1)
+	
 	# drop rows missing excessive amounts of data
 	master_dataframe = master_dataframe.dropna(thresh=threshold)
+	# fill in NaNs
+	master_dataframe[['late_date', 'late_time', 'study_hall']] = master_dataframe[['late_date', 
+																'late_time', 'study_hall']].fillna(value="None")
+	master_dataframe[['orange_status']] = master_dataframe[['orange_status']].fillna(value="ARE NOT")
+	
 	# obtain separate dataframes for each grade level
 	nine, ten, eleven, twelve = groupby_grade(master_dataframe)
 
