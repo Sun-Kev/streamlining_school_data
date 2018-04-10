@@ -1,4 +1,4 @@
-# Date of last edit: Thursday, 03.29.2018
+# Date of last edit: Tuesday, 04.06.2018
 #
 # Author: Kevin Sun
 #
@@ -22,18 +22,19 @@ from collections import defaultdict
 #								#
 #################################
 
-# FILE UPLOAD DATE IS: FEBRUARY 16, 2018
+# FILE UPLOAD DATE IS: APRIL 6, 2018
 
-GPA_DATA = "CPSHSStudentGPAs(updatedweekly) (7).csv"
-CLASS_RANK_DATA = "Report Status- CPS_Class Rank (GPA) (3).csv"
-WEEKLY_ATTN_DATA = "Weekly Attendance % Details_20180216.csv"
-YTD_ATTN_DATA = "YTD Attn Details_20180216.csv"
-SWIPE_DATA = "-Verify.net-GEN_View_Student_Swipe_Print_Report_20180216.csv"
-ORANGE_DATA = "ORANGE List_Week of March 5th, 2018 - 9th Grade .csv"
-EMAIL_LIST =  "Email List - Username and Passwords_as of 9-7-2017.xls"
-SAT_9 = "scores-by-org 2018-03-27T12-48-59.xlsx"
-SAT_10 = "scores-by-org 2018-03-27T12-50-29.xlsx"
-SAT_11 = "scores-by-org 2018-03-08T09-08-59.xlsx"
+GPA_DATA = "CPSHSStudentGPAs(updatedweekly) (9).csv" #
+CLASS_RANK_DATA = "Report Status- CPS_Class Rank (GPA) (3).csv" #
+WEEKLY_ATTN_DATA = "Weekly Attendance % Details_20180406.csv" # 
+YTD_ATTN_DATA = "YTD Attn Details_20180406.csv" #
+SWIPE_DATA = "-Verify.net-GEN_View_Student_Swipe_Print_Report_20180406.csv" #
+ORANGE_DATA = "ORANGE List_Week of March 27th, 2018 - ORANGE List (1).csv" #
+EMAIL_LIST =  "Email List - Username and Passwords_as of 9-7-2017.xls" #
+SAT_9 = "scores-by-org 2018-03-27T12-48-59.xlsx" #
+SAT_10 = "scores-by-org 2018-03-27T12-50-29.xlsx" #
+SAT_11 = "scores-by-org 2018-03-08T09-08-59.xlsx" # incorrect Student ID numbers
+#SAT_12 = "scores-by-org 2018-04-06T12-42-49.xlsx" # incorrect excel sheet
 start_date = "March 26, 2018" 
 end_date = "March 30, 2018"
 
@@ -65,6 +66,8 @@ def import_gpa_data(filename):
 		"LAST NAME": "last_name", "FIRST NAME": "first_name", 
 		"AVG GPA":"avg_gpa"})
 	gpa_df.index.names = ['ID']
+	# round values to 2 decimal places
+	gpa_df = gpa_df.round(2)
 
 	return gpa_df
 
@@ -143,6 +146,10 @@ def import_swipe_data(filename):
 	Output:
 		- final_swipe_df: a pandas dataframe of the swipe data
 	"""
+	# initialize date dictionary
+	date_dict = {'1':'Jan', '2':'Feb', '3':'Mar', '4':'Apr', '5':'May',
+		'6':'Jun', '7':'Jul', '8':'Aug', '9':'Sept', '10':'Oct',
+		'11':'Nov', '12':'Dec'}
 	# read in swipe report data and rename columns
 	swipe_df = pd.read_csv(filename, usecols=['Textbox20',
 		'Textbox12', 'Textbox14', 'Type'])
@@ -166,8 +173,14 @@ def import_swipe_data(filename):
 	d_time = defaultdict(list)
 	for t in swipe_df1.itertuples():
 		i, d, s, x = t
-		d_date[i].append(d)
-		d_time[i].append(s)
+		# rename dates and append
+		month = date_dict[d[0]]
+		final_date = month + " " + d[2]
+		d_date[i].append(final_date)
+		# truncate times and append
+		hrs, mins, sec = s.split(":")
+		final_time = hrs + ":" + mins + " " + "AM"		
+		d_time[i].append(final_time)
 	# make values a string
 	d_date = str_list(d_date)
 	d_time = str_list(d_time)
@@ -216,6 +229,8 @@ def import_orange_list(filename):
 	orange_df['orange_status'] = "ARE"
 	# index by ID numbers
 	orange_df.set_index('ID', inplace=True)
+	# drop any duplicate indices
+	orange_df = orange_df[~orange_df.index.duplicated(keep='first')]
 
 
 	return orange_df
@@ -234,8 +249,7 @@ def import_sat(filenames):
 	# import SAT scores for each grade
 	l = []
 	for file in filenames:
-		df = pd.read_excel(file, skiprows=9, usecols=['Student ID', 'Total Score', 
-													'ERW', 'Math'])
+		df = pd.read_excel(file, skiprows=9, usecols=['Student ID', 'Total Score', 'ERW', 'Math'])
 		# drop students withg missing IDs
 		df.dropna(inplace=True)
 		# make ID an integer and index
@@ -311,7 +325,8 @@ def master_dataframe(threshold):
 	master_dataframe[['late_date', 'late_time', 'study_hall']] = master_dataframe[['late_date', 
 																'late_time', 'study_hall']].fillna(value="None")
 	master_dataframe[['orange_status']] = master_dataframe[['orange_status']].fillna(value="ARE NOT")
-	master_dataframe[['composite_sat', 'erw_sat', 'math_sat']] = master_dataframe[['composite_sat', 'erw_sat', 'math_sat']].fillna(value="N/A")
+	master_dataframe[['composite_sat', 'erw_sat', 'math_sat']] = master_dataframe[['composite_sat', 
+	'erw_sat', 'math_sat']].fillna(value="Scores coming in mid-May")
 	# obtain separate dataframes for each grade level
 	nine, ten, eleven, twelve = groupby_grade(master_dataframe)
 
@@ -350,6 +365,21 @@ def get_excel_spreadsheets(threshold):
 	twelve.to_excel(writer,'GRADE_12')
 	writer.save()
 
+def get_mail_merge(threshold):
+	"""
+	This function creates a single Excel file with all information for each student
+	that has an email address
+
+	Input:
+		- threshold: integer of the max # of empty cells per student
+					 we are willing to tolerate in the master dataframe
+	"""	
+	master, nine, ten, eleven, twelve = master_dataframe(threshold)
+	master.dropna(subset=['email'],inplace=True)
+
+	writer = pd.ExcelWriter('MAIL_MERGE.xlsx')
+	master.to_excel(writer,'ALL STUDENTS')
+	writer.save()
 
 ###### OTHER HELPER FUNCTIONS #########
 
