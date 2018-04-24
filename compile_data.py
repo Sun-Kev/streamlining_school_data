@@ -1,8 +1,8 @@
-# Date of last edit: Tuesday, 04.06.2018
+# Date of last edit: Tuesday, 04.23.2018
 #
 # Author: Kevin Sun
 #
-# This compile_data.py file will take multiple csv files, clean
+# This compile_data.py file will take multiple csv or excel files, clean
 # and reorganize the data into a single dataframe. Each row of the
 # final dataframe will contain all relevant numbers and data points
 # for a single student.
@@ -22,21 +22,27 @@ from collections import defaultdict
 #								#
 #################################
 
-# FILE UPLOAD DATE IS: APRIL 6, 2018
+### FILES IN THIS SECTION MUST BE UPDATED WEEKLY ###
+# UPLOAD DATE IS: APRIL 23, 2018
 
-GPA_DATA = "CPSHSStudentGPAs(updatedweekly) (9).csv" #
-CLASS_RANK_DATA = "Report Status- CPS_Class Rank (GPA) (3).csv" #
-WEEKLY_ATTN_DATA = "Weekly Attendance % Details_20180406.csv" # 
-YTD_ATTN_DATA = "YTD Attn Details_20180406.csv" #
-SWIPE_DATA = "-Verify.net-GEN_View_Student_Swipe_Print_Report_20180406.csv" #
-ORANGE_DATA = "ORANGE List_Week of March 27th, 2018 - ORANGE List (1).csv" #
+GPA_DATA = "CPSHSStudentGPAs(updatedweekly) (11).csv" # updated Apr23
+CLASS_RANK_DATA = "Report Status- CPS_Class Rank (GPA) (8).csv" # updated Apr17 & Keep the same until end of year
+WEEKLY_ATTN_DATA = "Weekly Attendance % Details_20180423.csv" # updated Apr23
+YTD_ATTN_DATA = "YTD Attn Details_20180423.csv" #updated Apr23
+SWIPE_DATA = "-Verify.net-GEN_View_Student_Swipe_Print_Report_20180423.csv" # updated Apr23
+#ORANGE_DATA = "ORANGE List_Week of March 27th, 2018 - ORANGE List (1).csv" # updated Apr10
+CURRENT_GRADES = "FailureReport (48).csv"
+
+### FILES IN THIS SECTION ARE REUSED WEEK-TO-WEEK ###
 EMAIL_LIST =  "Email List - Username and Passwords_as of 9-7-2017.xls" #
 SAT_9 = "scores-by-org 2018-03-27T12-48-59.xlsx" #
 SAT_10 = "scores-by-org 2018-03-27T12-50-29.xlsx" #
 SAT_11 = "scores-by-org 2018-03-08T09-08-59.xlsx" # incorrect Student ID numbers
 #SAT_12 = "scores-by-org 2018-04-06T12-42-49.xlsx" # incorrect excel sheet
-start_date = "March 26, 2018" 
-end_date = "March 30, 2018"
+SL_11 = "Report Status- CPS_Student SL by Academic Year (8).csv"
+SL_12 = "Report Status- CPS_Student SL by Academic Year (7).csv"
+start_date = "April 16, 2018" 
+end_date = "April 20, 2018"
 
 ###########################
 #    PLEASE DO NOT MAKE   #
@@ -175,7 +181,7 @@ def import_swipe_data(filename):
 		i, d, s, x = t
 		# rename dates and append
 		month = date_dict[d[0]]
-		final_date = month + " " + d[2]
+		final_date = month + " " + d[2] + d[3]
 		d_date[i].append(final_date)
 		# truncate times and append
 		hrs, mins, sec = s.split(":")
@@ -209,31 +215,31 @@ def str_list(d):
 
 	return d_new
 
-def import_orange_list(filename):
-	"""
-	This function takes csv file of ORANGE LIST students and
-	returns a cleaned pandas dataframe w/ columns renamed.
+# def import_orange_list(filename):
+# 	"""
+# 	This function takes csv file of ORANGE LIST students and
+# 	returns a cleaned pandas dataframe w/ columns renamed.
 
-	Input:
-		- filename: a string name of the csv file
-	Output:
-		- orange_df: a pandas dataframe of orange list students
-	"""
-	orange_df = pd.read_csv(filename, usecols=['Student', 'Steps for Removal from Orange List'])
-	# rename columns
-	orange_df = orange_df.rename(index=int, columns={'Student':'ID', 
-		'Steps for Removal from Orange List':'study_hall'})
-	# extract Student ID numbers
-	orange_df['ID'] = orange_df['ID'].apply(lambda x: int(x.split(" ")[1]))
-	# add status column
-	orange_df['orange_status'] = "ARE"
-	# index by ID numbers
-	orange_df.set_index('ID', inplace=True)
-	# drop any duplicate indices
-	orange_df = orange_df[~orange_df.index.duplicated(keep='first')]
+# 	Input:
+# 		- filename: a string name of the csv file
+# 	Output:
+# 		- orange_df: a pandas dataframe of orange list students
+# 	"""
+# 	orange_df = pd.read_csv(filename, usecols=['Student', 'Steps for Removal from Orange List'])
+# 	# rename columns
+# 	orange_df = orange_df.rename(index=int, columns={'Student':'ID', 
+# 		'Steps for Removal from Orange List':'study_hall'})
+# 	# extract Student ID numbers
+# 	orange_df['ID'] = orange_df['ID'].apply(lambda x: int(x.split(" ")[1]))
+# 	# add status column
+# 	orange_df['orange_status'] = "ARE"
+# 	# index by ID numbers
+# 	orange_df.set_index('ID', inplace=True)
+# 	# drop any duplicate indices
+# 	orange_df = orange_df[~orange_df.index.duplicated(keep='first')]
 
 
-	return orange_df
+# 	return orange_df
 
 def import_sat(filenames):
 	"""
@@ -247,10 +253,31 @@ def import_sat(filenames):
 		- sat_df: a pandas dataframe of SAT score data
 	"""
 	# import SAT scores for each grade
+	# l = []
+	# for file in filenames:
+	# 	df = pd.read_excel(file, skiprows=9, usecols=['Student ID', 'Total Score', 'ERW', 'Math'])
+	# 	# drop students with missing IDs
+	# 	df.dropna(inplace=True)
+	# 	# make ID an integer and index
+	# 	df['Student ID'] = df['Student ID'].apply(lambda x: int(x))
+	# 	# rename columns 		
+	# 	df = df.rename(index=int, columns={'Student ID':'ID', 'Total Score':'composite_sat', 
+	# 					'Math':'math_sat', 'ERW':'erw_sat'})
+	# 	# index by ID
+	# 	df.set_index('ID')
+	# 	l.append(df)
+
+	# nine, ten, eleven = l
+	# sat_df = nine.append([ten, eleven])
+	# sat_df = sat_df.set_index('ID')
+
+	# return sat_df
+
+	# EDIT FOR NEW SAT SCORES #
 	l = []
 	for file in filenames:
 		df = pd.read_excel(file, skiprows=9, usecols=['Student ID', 'Total Score', 'ERW', 'Math'])
-		# drop students withg missing IDs
+		# drop students with missing IDs
 		df.dropna(inplace=True)
 		# make ID an integer and index
 		df['Student ID'] = df['Student ID'].apply(lambda x: int(x))
@@ -259,6 +286,10 @@ def import_sat(filenames):
 						'Math':'math_sat', 'ERW':'erw_sat'})
 		# index by ID
 		df.set_index('ID')
+		# fill each column with temporary info
+		df['composite_sat'] = 'Scores coming in mid-May'
+		df['math_sat'] = 'Scores coming in mid-May'
+		df['erw_sat'] = 'Scores coming in mid-May'
 		l.append(df)
 
 	nine, ten, eleven = l
@@ -268,6 +299,67 @@ def import_sat(filenames):
 	return sat_df
 
 
+def import_service_learning(filenames):
+	"""
+	This function takes multiple csv files of SERVICE LEARNING HOURS
+	and returns a cleaned pandas dataframe w/ columsn renamed.
+	
+	Input:
+		- filenames: a list of string names of csv files
+	Output:
+		- sl_df: a pandas dataframe of student service learning hours
+	"""
+	l = []
+	#for file in filenames:
+
+def import_current_grades(filename):
+	"""
+	This function takes a csv file of all student CURRENT GRADES
+	and returns a cleaned pandas dataframe w/ columns renamed
+
+	Input:
+		- filename: a csv file
+	Output:
+		- curr_grade_df: a pandas dataframe of current grades
+	"""
+	# import relevant csv file columns into pandas dataframe
+	cg_df = pd.read_csv(filename, usecols=['Student ID', 'Student Name',
+		'Period', 'Course Name', 'CAvg'])
+	# collapse dataframe based on student ID, identify cols by Period, 
+	# and fill in grade averages
+	cg_df=cg_df.pivot(index='Student ID', columns='Period',values= 'CAvg').reset_index().set_index('Student ID')
+	# fill in Periods 3, 4, 7, 8 based on 3/4 and 7/8 grades
+	for row in cg_df.iterrows():
+		if row[1][3]:
+			per_3_4_grade = row[1][3]
+			row[1][2] = per_3_4_grade
+			row[1][4] = per_3_4_grade
+		elif row[1][8]:
+			per_7_8_grade = row[1][8]
+			row[1][7] = per_7_8_grade
+			row[1][9] = per_7_8_grade
+	# drop cols for periods 3/4 and 7/8
+	cg_df.drop(['03/04 Per', '07/08 Per'], axis=1, inplace=True)
+	# fill the NaNs
+	cg_df = cg_df.fillna('To be updated soon!')
+	# rename the columns
+	cg_df = cg_df.rename(index=int, columns={'Student ID':'ID', '01 Per':'p1', 
+		'02 Per':'p2', '03 Per':'p3', '04 Per':'p4', '05 Per':'p5',
+		'06 Per':'p6', '07 Per':'p7', '08 Per':'p8', '09 Per':'p9'})
+
+	return cg_df
+
+def college_selectivity():
+	"""
+	This function assigns each student a college selectivity level
+	based on their GPA and PSAT/SAT score.
+
+	Input:
+		- 
+	Output:
+		- 
+	"""
+	d = {}
 def import_student_emails(filename):
 	"""
 	This function takes csv file of STUDENT EMAILS and 
@@ -314,17 +406,18 @@ def master_dataframe(threshold):
 	week = import_week_attn_data(WEEKLY_ATTN_DATA)
 	year = import_year_attn_data(YTD_ATTN_DATA)
 	swipe = import_swipe_data(SWIPE_DATA)
-	orange = import_orange_list(ORANGE_DATA)
+	# orange = import_orange_list(ORANGE_DATA)
 	sat = import_sat([SAT_9, SAT_10, SAT_11])
 	email = import_student_emails(EMAIL_LIST)
-	master_dataframe = pd.concat([email,gpa,rank,sat,week,year,swipe,orange],axis=1)
+	curr_grades = import_current_grades(CURRENT_GRADES)
+	master_dataframe = pd.concat([email,gpa,rank,sat,week,year,swipe, curr_grades],axis=1)
 	
 	# drop rows missing excessive amounts of data
 	master_dataframe = master_dataframe.dropna(thresh=threshold)
 	# fill in NaNs
-	master_dataframe[['late_date', 'late_time', 'study_hall']] = master_dataframe[['late_date', 
-																'late_time', 'study_hall']].fillna(value="None")
-	master_dataframe[['orange_status']] = master_dataframe[['orange_status']].fillna(value="ARE NOT")
+	# master_dataframe[['late_date', 'late_time', 'study_hall']] = master_dataframe[['late_date', 
+	# 															'late_time', 'study_hall']].fillna(value="None")
+	#master_dataframe[['orange_status']] = master_dataframe[['orange_status']].fillna(value="ARE NOT")
 	master_dataframe[['composite_sat', 'erw_sat', 'math_sat']] = master_dataframe[['composite_sat', 
 	'erw_sat', 'math_sat']].fillna(value="Scores coming in mid-May")
 	# obtain separate dataframes for each grade level
@@ -411,15 +504,5 @@ def missing_emails(master_dataframe):
 
 	for key, val in d.items():
 		w.writerow([key,val])
-
-
-
-
-
-
-
-
-
-
 
 
