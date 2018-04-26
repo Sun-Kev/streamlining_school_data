@@ -1,4 +1,4 @@
-# Date of last edit: Tuesday, 04.23.2018
+# Date of last edit: Thursday, 04.26.2018
 #
 # Author: Kevin Sun
 #
@@ -53,7 +53,7 @@ end_date = "April 20, 2018"
 ######### STEP 1 ##########
 #    IMPORT THE DATA      #
 # FILTER RELEVANT COLUMNS #
-#    THIS STEP HAS 5      #
+#    THIS STEP HAS 12     #
 #   RELEVANT FUNCTIONS	  #
 ###########################
 
@@ -70,7 +70,7 @@ def import_gpa_data(filename):
 	gpa_df = pd.read_csv(filename, index_col='STUDENT ID')
 	gpa_df = gpa_df.rename(index=int, columns={"GRADE LEVEL": "grade", 
 		"LAST NAME": "last_name", "FIRST NAME": "first_name", 
-		"AVG GPA":"avg_gpa"})
+		"AVG GPA":"weekly_gpa"})
 	gpa_df.index.names = ['ID']
 	# round values to 2 decimal places
 	gpa_df = gpa_df.round(2)
@@ -89,9 +89,11 @@ def import_rank_data(filename):
 		- classrank_df: a pandas dataframe of the class rank data
 	"""
 	classrank_df = pd.read_csv(filename, header=None,
-		usecols=[13,20,21,22], index_col=0)
-	classrank_df = classrank_df.rename(index=int, columns={20: "class_rank",
+		usecols=[13,18,20,21,22], index_col=0)
+	classrank_df = classrank_df.rename(index=int, columns={18: "unweight_gpa", 20: "class_rank",
 		21: "class_size", 22: "credits_earned"})
+	# round cum. unweight gpa to 2 decimal places
+	classrank_df['unweight_gpa'] = classrank_df['unweight_gpa'].round(2)
 	classrank_df.index.names = ['ID']
 
 	return classrank_df
@@ -327,7 +329,11 @@ def import_current_grades(filename):
 		'Period', 'Course Name', 'CAvg'])
 	# collapse dataframe based on student ID, identify cols by Period, 
 	# and fill in grade averages
-	cg_df=cg_df.pivot(index='Student ID', columns='Period',values= 'CAvg').reset_index().set_index('Student ID')
+	cg_df=cg_df.pivot(index='Student ID', columns='Period', values='CAvg').reset_index().set_index('Student ID')
+	# rename the columns
+	cg_df = cg_df.rename(index=int, columns={'Student ID':'ID', '01 Per':'p1', 
+		'02 Per':'p2', '03 Per':'p3', '04 Per':'p4', '05 Per':'p5',
+		'06 Per':'p6', '07 Per':'p7', '08 Per':'p8'})
 	# fill in Periods 3, 4, 7, 8 based on 3/4 and 7/8 grades
 	for row in cg_df.iterrows():
 		if row[1][3]:
@@ -337,17 +343,76 @@ def import_current_grades(filename):
 		elif row[1][8]:
 			per_7_8_grade = row[1][8]
 			row[1][7] = per_7_8_grade
-			row[1][9] = per_7_8_grade
 	# drop cols for periods 3/4 and 7/8
-	cg_df.drop(['03/04 Per', '07/08 Per'], axis=1, inplace=True)
-	# fill the NaNs
-	cg_df = cg_df.fillna('To be updated soon!')
-	# rename the columns
-	cg_df = cg_df.rename(index=int, columns={'Student ID':'ID', '01 Per':'p1', 
-		'02 Per':'p2', '03 Per':'p3', '04 Per':'p4', '05 Per':'p5',
-		'06 Per':'p6', '07 Per':'p7', '08 Per':'p8', '09 Per':'p9'})
-
+	cg_df.drop(['03/04 Per', '07/08 Per', '09 Per'], axis=1, inplace=True)	
+	# fill the NaNs with -1.0
+	cg_df.fillna(-1.0, inplace=True)
+	# # round the grades down to nearest ten
+	cg_df['p1_r'] = cg_df.p1.apply(round_grade)
+	cg_df['p2_r'] = cg_df.p2.apply(round_grade)
+	cg_df['p3_r'] = cg_df.p3.apply(round_grade)
+	cg_df['p4_r'] = cg_df.p4.apply(round_grade)
+	cg_df['p5_r'] = cg_df.p5.apply(round_grade)
+	cg_df['p6_r'] = cg_df.p6.apply(round_grade)
+	cg_df['p7_r'] = cg_df.p7.apply(round_grade)
+	cg_df['p8_r'] = cg_df.p8.apply(round_grade)
+	# add the letter grade columns
+	cg_df['p1_letter'] = cg_df.p1_r.apply(letter_grade)
+	cg_df['p2_letter'] = cg_df.p2_r.apply(letter_grade)
+	cg_df['p3_letter'] = cg_df.p3_r.apply(letter_grade)
+	cg_df['p4_letter'] = cg_df.p4_r.apply(letter_grade)
+	cg_df['p5_letter'] = cg_df.p5_r.apply(letter_grade)
+	cg_df['p6_letter'] = cg_df.p6_r.apply(letter_grade)
+	cg_df['p7_letter'] = cg_df.p7_r.apply(letter_grade)
+	cg_df['p8_letter'] = cg_df.p8_r.apply(letter_grade)
+	# add percentage signs
+	cg_df['p1'] = cg_df.p1.apply(add_percentage)
+	cg_df['p2'] = cg_df.p2.apply(add_percentage)
+	cg_df['p3'] = cg_df.p3.apply(add_percentage)
+	cg_df['p4'] = cg_df.p4.apply(add_percentage)
+	cg_df['p5'] = cg_df.p5.apply(add_percentage)
+	cg_df['p6'] = cg_df.p6.apply(add_percentage)
+	cg_df['p7'] = cg_df.p7.apply(add_percentage)
+	cg_df['p8'] = cg_df.p8.apply(add_percentage)
+	# drop cols for periods 3/4 and 7/8
+	cg_df.drop(['p1_r', 'p2_r', 'p3_r', 'p4_r', 'p5_r', 'p6_r', 'p7_r', 'p8_r'], axis=1, inplace=True)	
+	# replace values
+	cg_df.replace('-1.0%', '-', inplace=True)
+	
 	return cg_df
+
+
+def round_grade(grade_float):
+	"""
+	This is a helper function that determines the rounded grade
+	given a float of a student's grade in a particular class
+	"""
+	rounded_grade = np.floor(grade_float/10)
+	return rounded_grade
+
+
+def letter_grade(rounded_grade):
+	"""
+	This is a helper function that determines the letter grade
+	given a rounded float of a student's grade in a particular class.
+	"""
+	# define dictionary of grading scale
+	# Check the fillna above was filled w/ -1.0
+	d = {12.0: 'A', 11.0: 'A', 10.0: 'A', 9.0: 'A', 8.0: 'B', 
+	7.0: 'C', 6.0: 'D', 5.0: 'F', 4.0: 'F', 3.0: 'F', 2.0: 'F', 
+	1.0: 'F', 0.0: 'F', -1.0: '-'}
+	# get the letter
+	letter = d[rounded_grade]
+	return letter
+
+def add_percentage(grade):
+	"""
+	This is a helper function that adds a percentage sign 
+	to a float.
+	"""
+	perc_grade = str(grade) + '%'
+	return perc_grade
+
 
 def college_selectivity():
 	"""
@@ -360,6 +425,7 @@ def college_selectivity():
 		- 
 	"""
 	d = {}
+
 def import_student_emails(filename):
 	"""
 	This function takes csv file of STUDENT EMAILS and 
