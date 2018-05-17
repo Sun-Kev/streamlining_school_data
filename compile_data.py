@@ -1,4 +1,4 @@
-# Date of last edit: Thursday, 04.26.2018
+# Date of last edit: Thursday, 05.17.2018
 #
 # Author: Kevin Sun
 #
@@ -23,26 +23,24 @@ from collections import defaultdict
 #################################
 
 ### FILES IN THIS SECTION MUST BE UPDATED WEEKLY ###
-# UPLOAD DATE IS: APRIL 23, 2018
-
-GPA_DATA = "CPSHSStudentGPAs(updatedweekly) (11).csv" # updated Apr23
-CLASS_RANK_DATA = "Report Status- CPS_Class Rank (GPA) (8).csv" # updated Apr17 & Keep the same until end of year
-WEEKLY_ATTN_DATA = "Weekly Attendance % Details_20180423.csv" # updated Apr23
-YTD_ATTN_DATA = "YTD Attn Details_20180423.csv" #updated Apr23
-SWIPE_DATA = "-Verify.net-GEN_View_Student_Swipe_Print_Report_20180423.csv" # updated Apr23
-#ORANGE_DATA = "ORANGE List_Week of March 27th, 2018 - ORANGE List (1).csv" # updated Apr10
-CURRENT_GRADES = "FailureReport (48).csv"
+# UPLOAD DATE IS: MAY 15, 2018
+GPA_DATA = "week_gpa.csv" # updated May15
+CLASS_RANK_DATA = "gpa_rank.csv" # updated Apr17 & Keep until EOY
+WEEKLY_ATTN_DATA = "week_attn.csv" # updated May15
+YTD_ATTN_DATA = "ytd_attn.csv" #updated May15
+SWIPE_DATA = "swipe.csv" # updated May15
+CURRENT_GRADES = "grades.csv" # updated May15
 
 ### FILES IN THIS SECTION ARE REUSED WEEK-TO-WEEK ###
-EMAIL_LIST =  "Email List - Username and Passwords_as of 9-7-2017.xls" #
-SAT_9 = "scores-by-org 2018-03-27T12-48-59.xlsx" #
-SAT_10 = "scores-by-org 2018-03-27T12-50-29.xlsx" #
-SAT_11 = "scores-by-org 2018-03-08T09-08-59.xlsx" # incorrect Student ID numbers
-#SAT_12 = "scores-by-org 2018-04-06T12-42-49.xlsx" # incorrect excel sheet
-SL_11 = "Report Status- CPS_Student SL by Academic Year (8).csv"
-SL_12 = "Report Status- CPS_Student SL by Academic Year (7).csv"
-start_date = "April 16, 2018" 
-end_date = "April 20, 2018"
+EMAIL_LIST =  "emails.xls" #
+SAT_9 = "sat_9.xlsx" # New scores coming May 20
+SAT_10 = "sat_10.xlsx" # New scores coming May 20
+SAT_11 = "sat_11.xlsx" # New scores coming May 20
+#SAT_12 = "sat_12.xlsx" # issue: incorrect excel sheet
+SL_11 = "sl_11.csv"
+SL_12 = "sl_12.csv"
+START_DATE = "May 14, 2018"
+END_DATE = "May 18, 2018"
 
 ###########################
 #    PLEASE DO NOT MAKE   #
@@ -114,8 +112,6 @@ def import_week_attn_data(filename):
 	weekly_df = weekly_df.rename(index=int, columns={"Week": "week",
 		"Attendance Pct": "weekly_attn"})
 	weekly_df.index.names = ['ID']
-	weekly_df['start_date'] = start_date
-	weekly_df['end_date'] = end_date
 	
 	return weekly_df
 
@@ -183,7 +179,8 @@ def import_swipe_data(filename):
 		i, d, s, x = t
 		# rename dates and append
 		month = date_dict[d[0]]
-		final_date = month + " " + d[2] + d[3]
+		day = d.split('/')
+		final_date = month + " " + day[1]
 		d_date[i].append(final_date)
 		# truncate times and append
 		hrs, mins, sec = s.split(":")
@@ -201,7 +198,6 @@ def import_swipe_data(filename):
 	final_swipe_df = final_swipe_df.rename(index=int, 
 		columns={"0_x": "late_date", "0_y":"late_time"})
 
-
 	return final_swipe_df
 
 
@@ -216,32 +212,6 @@ def str_list(d):
 		d_new[key] = str(value)
 
 	return d_new
-
-# def import_orange_list(filename):
-# 	"""
-# 	This function takes csv file of ORANGE LIST students and
-# 	returns a cleaned pandas dataframe w/ columns renamed.
-
-# 	Input:
-# 		- filename: a string name of the csv file
-# 	Output:
-# 		- orange_df: a pandas dataframe of orange list students
-# 	"""
-# 	orange_df = pd.read_csv(filename, usecols=['Student', 'Steps for Removal from Orange List'])
-# 	# rename columns
-# 	orange_df = orange_df.rename(index=int, columns={'Student':'ID', 
-# 		'Steps for Removal from Orange List':'study_hall'})
-# 	# extract Student ID numbers
-# 	orange_df['ID'] = orange_df['ID'].apply(lambda x: int(x.split(" ")[1]))
-# 	# add status column
-# 	orange_df['orange_status'] = "ARE"
-# 	# index by ID numbers
-# 	orange_df.set_index('ID', inplace=True)
-# 	# drop any duplicate indices
-# 	orange_df = orange_df[~orange_df.index.duplicated(keep='first')]
-
-
-# 	return orange_df
 
 def import_sat(filenames):
 	"""
@@ -309,10 +279,23 @@ def import_service_learning(filenames):
 	Input:
 		- filenames: a list of string names of csv files
 	Output:
-		- sl_df: a pandas dataframe of student service learning hours
+		- sl_df: a dataframe of 11th and 12th grade service learning
+			hours
 	"""
 	l = []
-	#for file in filenames:
+	for file in filenames:
+		df = pd.read_csv(file, header=None, usecols=[10, 12])
+		df.rename(columns={10: 'ID', 12: 'service_hours'}, inplace=True)
+		df.dropna(subset=['ID'], inplace=True)
+		df['ID'] = df['ID'].astype(int) 
+		df.set_index('ID', inplace=True)
+		l.append(df)
+
+	eleven, twelve = l
+	sl_df = eleven.append(twelve)
+
+	return sl_df
+
 
 def import_current_grades(filename):
 	"""
@@ -325,15 +308,45 @@ def import_current_grades(filename):
 		- curr_grade_df: a pandas dataframe of current grades
 	"""
 	# import relevant csv file columns into pandas dataframe
-	cg_df = pd.read_csv(filename, usecols=['Student ID', 'Student Name',
+	cg_df = pd.read_csv(filename, usecols=['Student ID', 'Grade Level', 'Student Name',
 		'Period', 'Course Name', 'CAvg'])
+	
+	# create dictionary that maps Student ID to Grade Level
+	d = {}
+	for row in cg_df.iterrows():
+		# get the student ID number
+		id_num = row[1][0]
+		# get the student's grade level
+		grade = row[1][2]
+		if id_num not in d:
+			d[id_num] = grade
+
 	# collapse dataframe based on student ID, identify cols by Period, 
 	# and fill in grade averages
 	cg_df=cg_df.pivot(index='Student ID', columns='Period', values='CAvg').reset_index().set_index('Student ID')
+	
 	# rename the columns
-	cg_df = cg_df.rename(index=int, columns={'Student ID':'ID', '01 Per':'p1', 
+	cg_df.rename(index=int, columns={'Student ID':'ID', '01 Per':'p1', 
 		'02 Per':'p2', '03 Per':'p3', '04 Per':'p4', '05 Per':'p5',
-		'06 Per':'p6', '07 Per':'p7', '08 Per':'p8'})
+		'06 Per':'p6', '07 Per':'p7', '08 Per':'p8', 'Grade Level': 'grade'}, inplace=True)
+
+	# add the grade level column back in
+	cg_df['grade_level'] = cg_df.index.to_series().map(d)
+
+	# obtain sub-dataframes of each grade
+	nine = cg_df['grade_level'] == 9
+	ten = cg_df['grade_level'] == 10
+	eleven = cg_df['grade_level'] == 11
+	twelve = cg_df['grade_level'] == 12
+
+	# fill NAs with appropirate Lunch Periods
+	cg_df[nine].p3.fillna(value='Lunch', inplace=True)
+	cg_df[ten].p4.fillna(value='Lunch', inplace=True)
+	cg_df[eleven].p5.fillna(value='Lunch', inplace=True)
+
+	# concatenate back into a single DataFrame
+	#cg_df = pd.concat([df9, df10, df11, df12])
+
 	# fill in Periods 3, 4, 7, 8 based on 3/4 and 7/8 grades
 	for row in cg_df.iterrows():
 		if row[1][3]:
@@ -343,10 +356,13 @@ def import_current_grades(filename):
 		elif row[1][8]:
 			per_7_8_grade = row[1][8]
 			row[1][7] = per_7_8_grade
+	
 	# drop cols for periods 3/4 and 7/8
 	cg_df.drop(['03/04 Per', '07/08 Per', '09 Per'], axis=1, inplace=True)	
+	
 	# fill the NaNs with -1.0
 	cg_df.fillna(-1.0, inplace=True)
+	
 	# # round the grades down to nearest ten
 	cg_df['p1_r'] = cg_df.p1.apply(round_grade)
 	cg_df['p2_r'] = cg_df.p2.apply(round_grade)
@@ -356,6 +372,7 @@ def import_current_grades(filename):
 	cg_df['p6_r'] = cg_df.p6.apply(round_grade)
 	cg_df['p7_r'] = cg_df.p7.apply(round_grade)
 	cg_df['p8_r'] = cg_df.p8.apply(round_grade)
+	
 	# add the letter grade columns
 	cg_df['p1_letter'] = cg_df.p1_r.apply(letter_grade)
 	cg_df['p2_letter'] = cg_df.p2_r.apply(letter_grade)
@@ -365,6 +382,7 @@ def import_current_grades(filename):
 	cg_df['p6_letter'] = cg_df.p6_r.apply(letter_grade)
 	cg_df['p7_letter'] = cg_df.p7_r.apply(letter_grade)
 	cg_df['p8_letter'] = cg_df.p8_r.apply(letter_grade)
+	
 	# add percentage signs
 	cg_df['p1'] = cg_df.p1.apply(add_percentage)
 	cg_df['p2'] = cg_df.p2.apply(add_percentage)
@@ -374,44 +392,60 @@ def import_current_grades(filename):
 	cg_df['p6'] = cg_df.p6.apply(add_percentage)
 	cg_df['p7'] = cg_df.p7.apply(add_percentage)
 	cg_df['p8'] = cg_df.p8.apply(add_percentage)
+	
 	# drop cols for periods 3/4 and 7/8
 	cg_df.drop(['p1_r', 'p2_r', 'p3_r', 'p4_r', 'p5_r', 'p6_r', 'p7_r', 'p8_r'], axis=1, inplace=True)	
+	
 	# replace values
 	cg_df.replace('-1.0%', '-', inplace=True)
 	
 	return cg_df
 
 
-def round_grade(grade_float):
+def round_grade(grade):
 	"""
 	This is a helper function that determines the rounded grade
 	given a float of a student's grade in a particular class
 	"""
-	rounded_grade = np.floor(grade_float/10)
-	return rounded_grade
+	# only round grade if the input is a float
+	if type(grade) != str:
+		rounded_grade = np.floor(grade/10)
+		return rounded_grade
+	# otherwise return the original grade -> could be string "Lunch" or "Period"
+	else:
+		return grade
 
 
-def letter_grade(rounded_grade):
+def letter_grade(grade):
 	"""
 	This is a helper function that determines the letter grade
 	given a rounded float of a student's grade in a particular class.
 	"""
 	# define dictionary of grading scale
 	# Check the fillna above was filled w/ -1.0
-	d = {12.0: 'A', 11.0: 'A', 10.0: 'A', 9.0: 'A', 8.0: 'B', 
+	d = {18.0: 'A', 17.0: 'A', 16.0: 'A', 15.0: 'A', 14.0: 'A', 13.0: 'A',
+	12.0: 'A', 11.0: 'A', 10.0: 'A', 9.0: 'A', 8.0: 'B', 
 	7.0: 'C', 6.0: 'D', 5.0: 'F', 4.0: 'F', 3.0: 'F', 2.0: 'F', 
 	1.0: 'F', 0.0: 'F', -1.0: '-'}
-	# get the letter
-	letter = d[rounded_grade]
-	return letter
+	
+	# get letter grade only if grade is not a string
+	if type(grade) != str:
+		# get the letter
+		letter = d[grade]
+		return letter
+	else:
+		return grade
 
 def add_percentage(grade):
 	"""
 	This is a helper function that adds a percentage sign 
 	to a float.
 	"""
-	perc_grade = str(grade) + '%'
-	return perc_grade
+	if type(grade) == float:
+		perc_grade = str(grade) + '%'
+		return perc_grade
+	else:
+		return grade
 
 
 def college_selectivity():
@@ -424,7 +458,8 @@ def college_selectivity():
 	Output:
 		- 
 	"""
-	d = {}
+    # unfinished
+    d = {}
 
 def import_student_emails(filename):
 	"""
@@ -472,24 +507,33 @@ def master_dataframe(threshold):
 	week = import_week_attn_data(WEEKLY_ATTN_DATA)
 	year = import_year_attn_data(YTD_ATTN_DATA)
 	swipe = import_swipe_data(SWIPE_DATA)
-	# orange = import_orange_list(ORANGE_DATA)
 	sat = import_sat([SAT_9, SAT_10, SAT_11])
 	email = import_student_emails(EMAIL_LIST)
 	curr_grades = import_current_grades(CURRENT_GRADES)
-	master_dataframe = pd.concat([email,gpa,rank,sat,week,year,swipe, curr_grades],axis=1)
+	service = import_service_learning([SL_11, SL_12])
+	master_dataframe = pd.concat([email,gpa,rank,sat,week,year,swipe,curr_grades, service],axis=1)
 	
-	# drop rows missing excessive amounts of data
-	master_dataframe = master_dataframe.dropna(thresh=threshold)
-	# fill in NaNs
-	# master_dataframe[['late_date', 'late_time', 'study_hall']] = master_dataframe[['late_date', 
-	# 															'late_time', 'study_hall']].fillna(value="None")
+	# fill late_date and late_time columns NaNs
+	master_dataframe[['late_date','late_time']] = master_dataframe[['late_date', 'late_time']].fillna(value='None!')
+	
+	# fill in service learning for 9th and 10th graders
+	master_dataframe['service_hours'] = master_dataframe['service_hours'].fillna(value="See Note Below for Freshman & Sophomores")
+
+	# add the date
+	master_dataframe['start_date'] = START_DATE
+	master_dataframe['end_date'] = END_DATE
+
 	#master_dataframe[['orange_status']] = master_dataframe[['orange_status']].fillna(value="ARE NOT")
 	master_dataframe[['composite_sat', 'erw_sat', 'math_sat']] = master_dataframe[['composite_sat', 
 	'erw_sat', 'math_sat']].fillna(value="Scores coming in mid-May")
-	# obtain separate dataframes for each grade level
-	nine, ten, eleven, twelve = groupby_grade(master_dataframe)
+		
+	# drop rows missing excessive amounts of data
+	master_dataframe = master_dataframe.dropna(thresh=threshold)
 
-	return master_dataframe, nine, ten, eleven, twelve
+	# obtain separate dataframes for each grade level
+	# nine, ten, eleven, twelve = groupby_grade(master_dataframe)
+
+	return master_dataframe
 
 
 def groupby_grade(master_dataframe):
@@ -532,8 +576,10 @@ def get_mail_merge(threshold):
 	Input:
 		- threshold: integer of the max # of empty cells per student
 					 we are willing to tolerate in the master dataframe
+
+	RECOMMENDED THRESHOLD: 20
 	"""	
-	master, nine, ten, eleven, twelve = master_dataframe(threshold)
+	master = master_dataframe(threshold)
 	master.dropna(subset=['email'],inplace=True)
 
 	writer = pd.ExcelWriter('MAIL_MERGE.xlsx')
@@ -545,7 +591,7 @@ def get_mail_merge(threshold):
 def missing_emails(master_dataframe):
 	"""
 	This function obtains the first name, last name, id numbers of students
-	who have missing emails.
+	who have missing emails from the email.csv file.
 
 	Input:
 		- master_dataframe: a pandas datafarme
